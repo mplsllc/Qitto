@@ -1,6 +1,10 @@
 #ifndef _CRC32DYNAMIC_H_
 #define _CRC32DYNAMIC_H_
 
+#ifdef LINUX_PORT
+#include "linux/compat.h"
+#endif
+
 class CCrc32Dynamic
 {
 public:
@@ -11,7 +15,7 @@ public:
 
 protected:
 	inline void CalcCrc32(const BYTE byte, DWORD &dwCrc32) const;
-	
+
 	void Init();
 	void Free();
 

@@ -1,4 +1,6 @@
+#ifndef LINUX_PORT
 #include "stdafx.h"
+#endif
 #include "Crc32Dynamic.h"
 //#include <fstream.h>
 
