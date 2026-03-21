@@ -264,6 +264,13 @@ public:
         *this = CString(buf);
     }
 
+    // FormatV — printf-style with va_list (used by execDMLEx etc.)
+    void FormatV(const char *fmt, va_list args) {
+        char buf[4096];
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        *this = CString(buf);
+    }
+
     // Comparison
     int Compare(const char *s) const { return QString::compare(QString::fromUtf8(s)); }
     int CompareNoCase(const char *s) const { return QString::compare(QString::fromUtf8(s), Qt::CaseInsensitive); }
@@ -452,7 +459,10 @@ inline void Log(const char *msg, bool = false, CString = CString(), long = 0) {
 #define STRTOK(a, b) strtok(a, b)
 #define STRCPY(a, b) strcpy(a, b)
 #define STRNCPY(a, b, n) strncpy(a, b, n)
-#define SPRINTF snprintf
+// SPRINTF — on Windows this is wsprintf (no size param). On Linux, use snprintf.
+// Ditto calls SPRINTF(buf, fmt, ...) without size — we use sizeof(buf) as a reasonable default.
+// This requires buf to be a stack array, not a pointer. Works for all Ditto usage.
+#define SPRINTF(buf, ...) snprintf(buf, sizeof(buf), __VA_ARGS__)
 #define ATOL(a) atol(a)
 #define ATOI(a) atoi(a)
 #define STRICMP(a, b) strcasecmp(a, b)
@@ -467,6 +477,10 @@ inline void Log(const char *msg, bool = false, CString = CString(), long = 0) {
 
 // OutputDebugString — no-op
 #define OutputDebugString(s) ((void)0)
+#define OutputDebugStringA(s) ((void)0)
+
+// AfxIsValidString — always true on Linux
+#define AfxIsValidString(s) (true)
 
 // Sleep
 #include <unistd.h>

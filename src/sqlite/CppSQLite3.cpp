@@ -25,10 +25,16 @@
 // V3.1		16/09/2004	-Implemented getXXXXField using sqlite3 functions
 //						-Added CppSQLiteDB3::tableExists()
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef LINUX_PORT
 #include "StdAfx.h"
+#else
+#include "linux/compat.h"
+#endif
 #include "CppSQLite3.h"
 #include <cstdlib>
+#ifndef LINUX_PORT
 #include "..\UnicodeMacros.h"
+#endif
 #include <regex>
 
 
@@ -52,13 +58,20 @@ CppSQLite3Exception::CppSQLite3Exception(const int nErrCode,
 									bool bDeleteMsg/*=true*/) :
 									mnErrCode(nErrCode)
 {
+#ifdef LINUX_PORT
+	snprintf(mpszErrMess, sizeof(mpszErrMess), "%s[%d]: %s",
+								errorCodeAsString(nErrCode),
+								nErrCode,
+								szErrMess ? szErrMess : "");
+#else
 	swprintf(mpszErrMess, _T("%s[%d]: %s"),
 								errorCodeAsString(nErrCode),
 								nErrCode,
 								szErrMess ? szErrMess : _T(""));
+#endif
 }
 
-									
+
 CppSQLite3Exception::CppSQLite3Exception(const CppSQLite3Exception&  e) :
 									mnErrCode(e.mnErrCode)
 {
@@ -66,7 +79,11 @@ CppSQLite3Exception::CppSQLite3Exception(const CppSQLite3Exception&  e) :
 
 	if(e.mpszErrMess)
 	{
+#ifdef LINUX_PORT
+		snprintf(mpszErrMess, sizeof(mpszErrMess), "%s", e.mpszErrMess);
+#else
 		swprintf(mpszErrMess, _T("%s"), e.mpszErrMess);
+#endif
 	}
 }
 
@@ -198,7 +215,11 @@ const TCHAR* CppSQLite3Query::fieldValue(int nField)
 								DONT_DELETE_MSG);
 	}
 
+	#ifdef LINUX_PORT
+	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
+#else
 	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+#endif
 }
 
 
@@ -206,7 +227,11 @@ const TCHAR* CppSQLite3Query::fieldValue(const TCHAR* szField)
 {
 	int nField = fieldIndex(szField);
 
+	#ifdef LINUX_PORT
+	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
+#else
 	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+#endif
 }
 
 
@@ -277,7 +302,11 @@ const TCHAR* CppSQLite3Query::getStringField(int nField, const TCHAR* szNullValu
 	}
 	else
 	{
-		return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+		#ifdef LINUX_PORT
+	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
+#else
+	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+#endif
 	}
 }
 
@@ -578,7 +607,11 @@ void CppSQLite3Statement::bind(int nParam, const TCHAR* szValue)
 {
 	checkVM();
 
+#ifdef LINUX_PORT
+	int nRes = sqlite3_bind_text(mpVM, nParam, szValue, -1, SQLITE_TRANSIENT);
+#else
 	int nRes = sqlite3_bind_text16(mpVM, nParam, szValue, -1, SQLITE_TRANSIENT);
+#endif
 	if (nRes != SQLITE_OK)
 	{
 		throw CppSQLite3Exception(nRes,
@@ -750,16 +783,23 @@ void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** values)
 			sqlite3_result_int(context, 0);
 		}
 	}
-	catch (std::regex_error& e) 
+	catch (std::regex_error& e)
 	{
+		(void)e;
+#ifndef LINUX_PORT
 		CStringA r;
 		r.Format("regex_search exception %d, reg: %s, str: %s", e.code(), reg, text);
 		OutputDebugStringA(r);
+#endif
 	}
 }
 
 bool CppSQLite3DB::DBEncrypted()
 {
+#ifdef LINUX_PORT
+	// Encryption not supported on Linux port — db is always unencrypted
+	return false;
+#else
 	bool encrypted = false;
 	CFile file;
 	CFileException ex;
@@ -781,11 +821,16 @@ bool CppSQLite3DB::DBEncrypted()
 	}
 
 	return encrypted;
+#endif // !LINUX_PORT
 }
 
 void CppSQLite3DB::open(const TCHAR* szFile)
 {
+#ifdef LINUX_PORT
+	int nRet = sqlite3_open(szFile, &mpDB);
+#else
 	int nRet = sqlite3_open16(szFile, &mpDB);
+#endif
 
 	//sqlite3_exec(mpDB, "PRAGMA rekey=123456", 0, 0, 0);
 	//sqlite3_exec(mpDB, "PRAGMA key=123456", 0, 0, 0);
@@ -1013,7 +1058,11 @@ sqlite3_stmt* CppSQLite3DB::compile(const TCHAR* szSQL)
 	const TCHAR* szTail=0;
 	sqlite3_stmt* pVM;
 
+#ifdef LINUX_PORT
+	int nRet = sqlite3_prepare_v2(mpDB, szSQL, -1, &pVM, (const char**)&szTail);
+#else
 	int nRet = sqlite3_prepare16_v2(mpDB, szSQL, -1, &pVM, (const void**)szTail);
+#endif
 	if (nRet != SQLITE_OK)
 	{
 		SQLITE3_ERRMSG(mpDB);
