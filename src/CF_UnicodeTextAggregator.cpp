@@ -1,5 +1,7 @@
+#ifndef LINUX_PORT
 #include "stdafx.h"
-#include ".\cf_unicodetextaggregator.h"
+#endif
+#include "CF_UnicodeTextAggregator.h"
 #include "Misc.h"
 
 CCF_UnicodeTextAggregator::CCF_UnicodeTextAggregator(CStringW csSeparator) :
@@ -13,6 +15,7 @@ CCF_UnicodeTextAggregator::~CCF_UnicodeTextAggregator(void)
 
 bool CCF_UnicodeTextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int nCount, UINT cfType)
 {
+#ifndef LINUX_PORT
 	if (cfType == CF_HDROP)
 	{
 		CString hDropFiles = _T("");
@@ -64,7 +67,33 @@ bool CCF_UnicodeTextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, 
 	}
 
 	m_csNewText += pText;
-	
+#else
+	// On Linux, "unicode" text is UTF-8 — same as narrow text
+	if (cfType == CF_HDROP)
+	{
+		// File drop as text/uri-list — treat as text
+	}
+
+	LPCSTR pText = (LPCSTR)lpData;
+	if(pText == NULL)
+	{
+		return false;
+	}
+
+	// Ensure null terminated
+	if(pText[nDataSize-1] != '\0')
+	{
+		int len = 0;
+		for(len = 0; len < nDataSize && pText[len] != '\0'; len++ )
+		{
+		}
+		if(len >= nDataSize)
+			return false;
+	}
+
+	m_csNewText += pText;
+#endif
+
 	if(nPos != nCount-1)
 	{
 		m_csNewText += m_csSeparator;
@@ -75,9 +104,16 @@ bool CCF_UnicodeTextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, 
 
 HGLOBAL CCF_UnicodeTextAggregator::GetHGlobal()
 {
+#ifdef LINUX_PORT
+	// On Linux, unicode text is UTF-8 (same as narrow)
+	long lLen = m_csNewText.GetLength();
+	QByteArray utf8 = static_cast<const QString&>(m_csNewText).toUtf8();
+	HGLOBAL hGlobal = NewGlobalP(utf8.constData(), utf8.size() + 1);
+	return hGlobal;
+#else
 	long lLen = m_csNewText.GetLength() * sizeof(wchar_t);
 	HGLOBAL hGlobal = NewGlobalP(m_csNewText.GetBuffer(lLen), lLen+sizeof(wchar_t));
 	m_csNewText.ReleaseBuffer();
-
 	return hGlobal;
+#endif
 }

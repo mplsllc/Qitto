@@ -1,18 +1,37 @@
 // Misc_linux.cpp — Linux implementations of Ditto's Misc utility functions
-// These are the portable functions from Misc.cpp that the core data layer needs.
+// Only functions NOT already provided as inlines in compat.h.
+// StrF, Log, IsValid, NewGlobalP, NewGlobal, NewGlobalH, CopyToGlobal*,
+// CompareGlobal* are all in compat.h as inlines now.
 
 #include "StdAfx.h"
 #include "Misc.h"
 #include "sqlite/CppSQLite3.h"
 
-#include <cstdio>
-#include <cstdarg>
-#include <ctime>
 #include <cstring>
 
 // ============================================================================
-// Logging
+// Logging helpers (log() with file/line signature used by Log macro)
+// The Log macro in Misc.h calls log(msg, false, __FILE__, __LINE__)
+// compat.h provides the simple Log(CString) overload.
+// This provides the full-signature version for the macro.
 // ============================================================================
+
+void log(const TCHAR* msg, bool bFromSendRecieve, CString csFile, long lLine)
+{
+    (void)bFromSendRecieve;
+
+    // Extract filename from path
+    int slash = csFile.ReverseFind('/');
+    if (slash >= 0)
+        csFile = csFile.Right(csFile.GetLength() - slash - 1);
+
+    fprintf(stderr, "[Qitto %s:%ld] %s\n", (const char*)csFile, lLine, msg);
+}
+
+void logsendrecieveinfo(CString cs, CString csFile, long lLine)
+{
+    log(cs, true, csFile, lLine);
+}
 
 void AppendToFile(const TCHAR* fn, const TCHAR *msg)
 {
@@ -23,54 +42,9 @@ void AppendToFile(const TCHAR* fn, const TCHAR *msg)
     }
 }
 
-void log(const TCHAR* msg, bool bFromSendRecieve, CString csFile, long lLine)
-{
-    (void)bFromSendRecieve;
-
-    time_t now = time(nullptr);
-    struct tm *lt = localtime(&now);
-
-    CString csText;
-    csText.Format("[%d/%d/%d %02d:%02d:%02d - ",
-        lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
-        lt->tm_hour, lt->tm_min, lt->tm_sec);
-
-    // Extract filename from path
-    int slash = csFile.ReverseFind('/');
-    if (slash >= 0)
-        csFile = csFile.Right(csFile.GetLength() - slash - 1);
-
-    CString csFileLine;
-    csFileLine.Format("%s %ld] ", (const char*)csFile, lLine);
-    csText += csFileLine;
-    csText += msg;
-    csText += "\n";
-
-    fprintf(stderr, "%s", (const char*)csText);
-}
-
-void logsendrecieveinfo(CString cs, CString csFile, long lLine)
-{
-    log(cs, true, csFile, lLine);
-}
-
 CString GetErrorString(int err)
 {
     return StrF("Error %d: %s", err, strerror(err));
-}
-
-// ============================================================================
-// String formatting — StrF (used everywhere in Ditto)
-// ============================================================================
-
-CString StrF(const TCHAR * pszFormat, ...)
-{
-    CString str;
-    va_list argList;
-    va_start(argList, pszFormat);
-    str.FormatV(pszFormat, argList);
-    va_end(argList);
-    return str;
 }
 
 // ============================================================================
@@ -115,16 +89,9 @@ CString RemoveEscapes(const TCHAR* str)
 }
 
 // ============================================================================
-// Global Memory Helper Functions
-// These work through compat.h's HGLOBAL → QByteArray wrapper
+// Global Memory Helpers — CopyToGlobal*, CompareGlobal*
+// These call GlobalLock/Unlock from compat.h
 // ============================================================================
-
-BOOL IsValid(HGLOBAL hGlobal)
-{
-    void* pvData = GlobalLock(hGlobal);
-    GlobalUnlock(hGlobal);
-    return (pvData != NULL);
-}
 
 void CopyToGlobalHP(HGLOBAL hDest, LPVOID pBuf, SIZE_T ulBufLen)
 {
@@ -140,27 +107,6 @@ void CopyToGlobalHH(HGLOBAL hDest, HGLOBAL hSource, SIZE_T ulBufLen)
     if (pvData)
         CopyToGlobalHP(hDest, pvData, ulBufLen);
     GlobalUnlock(hSource);
-}
-
-HGLOBAL NewGlobalP(LPVOID pBuf, SIZE_T nLen)
-{
-    HGLOBAL hDest = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE, nLen);
-    if (hDest && pBuf)
-        CopyToGlobalHP(hDest, pBuf, nLen);
-    return hDest;
-}
-
-HGLOBAL NewGlobal(SIZE_T nLen)
-{
-    return GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE, nLen);
-}
-
-HGLOBAL NewGlobalH(HGLOBAL hSource, SIZE_T nLen)
-{
-    LPVOID pvData = GlobalLock(hSource);
-    HGLOBAL hDest = NewGlobalP(pvData, nLen);
-    GlobalUnlock(hSource);
-    return hDest;
 }
 
 int CompareGlobalHP(HGLOBAL hLeft, LPVOID pBuf, SIZE_T ulBufLen)
@@ -185,7 +131,7 @@ int CompareGlobalHH(HGLOBAL hLeft, HGLOBAL hRight, SIZE_T ulBufLen)
 
 // ============================================================================
 // Clipboard format name ↔ ID mapping
-// These must match Ditto's DB format strings exactly for schema compatibility.
+// Must match Ditto's DB format strings exactly for schema compatibility.
 // ============================================================================
 
 CLIPFORMAT GetFormatID(LPCTSTR cbName)
@@ -254,7 +200,6 @@ CString GetFormatName(CLIPFORMAT cbType)
 
 std::vector<CLIPFORMAT> GetSystemClipFormats()
 {
-    // Return the standard clipboard formats that Ditto tracks
     return {
         CF_TEXT, CF_UNICODETEXT, CF_DIB, CF_HDROP,
         CF_OEMTEXT, CF_LOCALE
@@ -275,13 +220,10 @@ void DeleteParamFromRTF(CStringA &text, CStringA find, bool searchForTrailingDig
                    ((text.GetAt(end) >= '0' && text.GetAt(end) <= '9') || text.GetAt(end) == '-'))
                 end++;
         }
-        // Remove including trailing space if present
         if (end < text.GetLength() && text.GetAt(end) == ' ')
             end++;
 
-        QByteArray &ba = text;
-        ba.remove(pos, end - pos);
-
+        text = CStringA(text.Left(pos) + text.Mid(end));
         pos = text.Find(find, pos);
     }
 }
@@ -292,10 +234,7 @@ bool RemoveRTFSection(CStringA &str, CStringA section)
     if (pos < 0)
         return false;
 
-    // Find matching closing brace
-    int depth = 0;
     int start = pos;
-    // Walk back to find opening brace
     for (int i = pos; i >= 0; i--) {
         if (str.GetAt(i) == '{') {
             start = i;
@@ -303,13 +242,13 @@ bool RemoveRTFSection(CStringA &str, CStringA section)
         }
     }
 
+    int depth = 0;
     for (int i = start; i < str.GetLength(); i++) {
         if (str.GetAt(i) == '{') depth++;
         else if (str.GetAt(i) == '}') {
             depth--;
             if (depth == 0) {
-                QByteArray &ba = str;
-                ba.remove(start, i - start + 1);
+                str = CStringA(str.Left(start) + str.Mid(i + 1));
                 return true;
             }
         }

@@ -389,6 +389,39 @@ public:
     }
 
     char GetAt(int i) const { return (i >= 0 && i < size()) ? at(i) : '\0'; }
+
+    CStringA Trim() const { return CStringA(trimmed()); }
+
+    char* GetBuffer(int minLen = 0) {
+        if (minLen > size()) resize(minLen);
+        return data();
+    }
+    void ReleaseBuffer(int newLen = -1) {
+        if (newLen >= 0) resize(newLen);
+    }
+
+    CStringA& operator+=(const char *s) { append(s); return *this; }
+    CStringA& operator+=(const CStringA &s) { append(s); return *this; }
+    CStringA& operator+=(char c) { append(c); return *this; }
+
+    friend CStringA operator+(const CStringA &a, const CStringA &b) {
+        CStringA r(a);
+        r.append(b);
+        return r;
+    }
+    friend CStringA operator+(const CStringA &a, const char *b) {
+        CStringA r(a);
+        r.append(b);
+        return r;
+    }
+    friend CStringA operator+(const char *a, const CStringA &b) {
+        CStringA r(a);
+        r.append(b);
+        return r;
+    }
+
+    friend bool operator==(const CStringA &a, const char *b) { return a == QByteArray(b); }
+    friend bool operator!=(const CStringA &a, const char *b) { return a != QByteArray(b); }
 };
 
 // CStringW — wide string, alias for CString (UTF-8 on Linux)

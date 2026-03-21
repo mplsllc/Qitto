@@ -1,18 +1,13 @@
+#ifndef LINUX_PORT
 #include "stdafx.h"
-#include ".\htmlformataggregator.h"
+#endif
+#include "HTMLFormatAggregator.h"
 #include "Misc.h"
-#include "..\Shared\Tokenizer.h"
+#include "../Shared/Tokenizer.h"
 
 CHTMLFormatAggregator::CHTMLFormatAggregator(CStringA csSepator) :
 	m_csSeparator(csSepator)
 {
-	//Remove the first line feed
-//	if(m_csSeparator.GetLength() > 1 && m_csSeparator[0] == '\r' && m_csSeparator[1] == '\n')
-//	{
-//		m_csSeparator.Delete(0);
-//		m_csSeparator.Delete(0);
-//	}
-
 	m_csSeparator.Replace("\r\n", "<br>");
 }
 
@@ -31,7 +26,7 @@ bool CHTMLFormatAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int 
 	//Ensure it's null terminated
 	if(pText[nDataSize-1] != '\0')
 	{
-		pText[nDataSize-1] = NULL;
+		pText[nDataSize-1] = '\0';
 	}
 
 	CHTMFormatStruct HtmlData;
@@ -48,7 +43,7 @@ bool CHTMLFormatAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int 
 		{
 			m_csNewText += m_csSeparator;
 		}
-	}	
+	}
 
 	return true;
 }
@@ -115,7 +110,11 @@ bool CHTMFormatStruct::GetData(LPCSTR HTML)
 	if(m_lStartFragment >= 0 && m_lEndFragment >= 0 && m_lStartFragment < m_lEndFragment)
 	{
 		m_csFragment = Tokenizer.m_cs.Mid(m_lStartFragment, m_lEndFragment-m_lStartFragment);
+#ifdef LINUX_PORT
+		m_csFragment = CStringA(static_cast<const QString&>(m_csFragment).trimmed().toUtf8());
+#else
 		m_csFragment = m_csFragment.Trim();
+#endif
 	}
 
 	if(m_csFragment.IsEmpty())
@@ -128,19 +127,6 @@ bool CHTMFormatStruct::GetData(LPCSTR HTML)
 
 bool CHTMFormatStruct::Serialize(CStringA &csHTMLFormat)
 {
-	//Build a structure just like this
-// Version:0.9
-// StartHTML:00000244
-// EndHTML:00000338
-// StartFragment:00000278
-// StartFragment:00000302
-// SourceURL:http://www.google.com/search?hl=en&client=firefox-a&channel=s&rls=org.mozilla%3Aen-US%3Aofficial&hs=oIx&q=c%2B%2B+interface&btnG=Search
-// <html><body>
-// <!--StartFragment--><font size="-1">e</font><!--EndFragment-->
-// </body>
-// </html>
-
-
 	CStringA csVersionText("Version:");
 	CStringA csStartHTMLText("StartHTML:");
 	CStringA csEndHTMLText("EndHTML:");
@@ -164,7 +150,7 @@ bool CHTMFormatStruct::Serialize(CStringA &csHTMLFormat)
 
 	m_lStartHTML = lCurrentPos;
 
-	lCurrentPos += csStartHTMLText.GetLength() + 2 + 
+	lCurrentPos += csStartHTMLText.GetLength() + 2 +
 					csStartFragmentMarkerText.GetLength() + 2;
 	m_lStartFragment = lCurrentPos;
 
@@ -179,27 +165,27 @@ bool CHTMFormatStruct::Serialize(CStringA &csHTMLFormat)
 	csHTMLFormat = csVersionText + m_csVersion + "\r\n";
 
 	CStringA csFormat;
-	csFormat.Format("%s%08d\r\n", csStartHTMLText, m_lStartHTML);
+	csFormat.Format("%s%08d\r\n", (const char*)csStartHTMLText, m_lStartHTML);
 	csHTMLFormat += csFormat;
 
-	csFormat.Format("%s%08d\r\n", csEndHTMLText, m_lEndHTML);
+	csFormat.Format("%s%08d\r\n", (const char*)csEndHTMLText, m_lEndHTML);
 	csHTMLFormat += csFormat;
 
-	csFormat.Format("%s%08d\r\n", csStartFragmentText, m_lStartFragment);
+	csFormat.Format("%s%08d\r\n", (const char*)csStartFragmentText, m_lStartFragment);
 	csHTMLFormat += csFormat;
 
-	csFormat.Format("%s%08d\r\n", csEndFragmentText, m_lEndFragment);
+	csFormat.Format("%s%08d\r\n", (const char*)csEndFragmentText, m_lEndFragment);
 	csHTMLFormat += csFormat;
 
-	csFormat.Format("%s%s\r\n", csSourceURLText, m_csSourceURL);
+	csFormat.Format("%s%s\r\n", (const char*)csSourceURLText, (const char*)m_csSourceURL);
 	csHTMLFormat += csFormat;
 
-	csFormat.Format("%s\r\n%s", csStartHTML, csStartFragmentMarkerText);
+	csFormat.Format("%s\r\n%s", (const char*)csStartHTML, (const char*)csStartFragmentMarkerText);
 	csHTMLFormat += csFormat;
 
 	csHTMLFormat += m_csFragment;
 
-	csFormat.Format("%s\r\n%s", csEndFragmentMarkerText, csEndHTML);
+	csFormat.Format("%s\r\n%s", (const char*)csEndFragmentMarkerText, (const char*)csEndHTML);
 	csHTMLFormat += csFormat;
 
 	return true;

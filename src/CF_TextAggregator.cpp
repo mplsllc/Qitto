@@ -1,5 +1,7 @@
+#ifndef LINUX_PORT
 #include "stdafx.h"
-#include ".\cf_textaggregator.h"
+#endif
+#include "CF_TextAggregator.h"
 #include "Misc.h"
 
 CCF_TextAggregator::CCF_TextAggregator(CStringA csSepator) :
@@ -13,6 +15,7 @@ CCF_TextAggregator::~CCF_TextAggregator(void)
 
 bool CCF_TextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int nCount, UINT cfType)
 {
+#ifndef LINUX_PORT
 	if (cfType == CF_HDROP)
 	{
 		CStringA hDropFiles = _T("");
@@ -42,6 +45,13 @@ bool CCF_TextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int nCo
 		}
 		return false;
 	}
+#else
+	if (cfType == CF_HDROP)
+	{
+		// On Linux, file drop data is text/uri-list — just treat as text
+		// Fall through to text handling below
+	}
+#endif
 
 	LPCSTR pText = (LPCSTR)lpData;
 	if(pText == NULL)
@@ -62,7 +72,7 @@ bool CCF_TextAggregator::AddClip(LPVOID lpData, int nDataSize, int nPos, int nCo
 	}
 
 	m_csNewText += pText;
-	
+
 	if(nPos != nCount-1)
 	{
 		m_csNewText += m_csSeparator;
