@@ -2,6 +2,10 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#ifdef LINUX_PORT
+// On Linux, replaced by linux/DatabaseUtilities_linux.cpp
+#else
+
 #include "stdafx.h"
 #include "CP_Main.h"
 #include "DatabaseUtilities.h"
@@ -1141,3 +1145,4 @@ BOOL EnsureDirectory(CString csPath)
 //
 //	return TRUE;
 //}
+#endif // !LINUX_PORT
