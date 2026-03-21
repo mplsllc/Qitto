@@ -119,7 +119,7 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
         catch (CppSQLite3Exception&) {}
 
         try {
-            db.execDML("CREATE TRIGGER delete_data_trigger BEFORE DELETE ON Main FOR EACH ROW\n"
+            db.execDML("CREATE TRIGGER IF NOT EXISTS delete_data_trigger BEFORE DELETE ON Main FOR EACH ROW\n"
                        "BEGIN\n"
                        "INSERT INTO MainDeletes VALUES(old.lID, datetime('now'));\n"
                        "END\n");
@@ -129,7 +129,7 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
         // Ensure CopyBuffers table exists
         try { db.execQuery("SELECT lID, lClipID, lCopyBuffer FROM CopyBuffers"); }
         catch (CppSQLite3Exception&) {
-            db.execDML("CREATE TABLE CopyBuffers("
+            db.execDML("CREATE TABLE IF NOT EXISTS CopyBuffers("
                        "lID INTEGER PRIMARY KEY AUTOINCREMENT, "
                        "lClipID INTEGER,"
                        "lCopyBuffer INTEGER)");
@@ -138,11 +138,11 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
         // Ensure MainDeletes table exists
         try { db.execQuery("SELECT clipId FROM MainDeletes"); }
         catch (CppSQLite3Exception&) {
-            db.execDML("CREATE TABLE MainDeletes("
+            db.execDML("CREATE TABLE IF NOT EXISTS MainDeletes("
                        "clipID INTEGER,"
                        "modifiedDate)");
 
-            db.execDML("CREATE TRIGGER MainDeletes_delete_data_trigger BEFORE DELETE ON MainDeletes FOR EACH ROW\n"
+            db.execDML("CREATE TRIGGER IF NOT EXISTS MainDeletes_delete_data_trigger BEFORE DELETE ON MainDeletes FOR EACH ROW\n"
                        "BEGIN\n"
                        "DELETE FROM CopyBuffers WHERE lClipID = old.clipID;\n"
                        "DELETE FROM Data WHERE lParentID = old.clipID;\n"
@@ -151,8 +151,8 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
 
         // Ensure indexes
         try {
-            db.execDML("CREATE INDEX Main_ParentId on Main(lParentID DESC)");
-            db.execDML("CREATE INDEX Main_IsGroup on Main(bIsGroup DESC)");
+            db.execDML("CREATE INDEX IF NOT EXISTS Main_ParentId on Main(lParentID DESC)");
+            db.execDML("CREATE INDEX IF NOT EXISTS Main_IsGroup on Main(bIsGroup DESC)");
             db.execDML("CREATE INDEX Main_ShortCut on Main(lShortCut DESC)");
         }
         catch (CppSQLite3Exception&) {}
@@ -163,8 +163,8 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
             db.execDML("ALTER TABLE Main ADD clipOrder REAL");
             db.execDML("ALTER TABLE Main ADD clipGroupOrder REAL");
             db.execDML("Update Main set clipOrder = lDate, clipGroupOrder = lDate");
-            db.execDML("CREATE INDEX Main_ClipOrder on Main(clipOrder DESC)");
-            db.execDML("CREATE INDEX Main_ClipGroupOrder on Main(clipGroupOrder DESC)");
+            db.execDML("CREATE INDEX IF NOT EXISTS Main_ClipOrder on Main(clipOrder DESC)");
+            db.execDML("CREATE INDEX IF NOT EXISTS Main_ClipGroupOrder on Main(clipGroupOrder DESC)");
             try { db.execDML("DROP INDEX Main_Date"); } catch (CppSQLite3Exception&) {}
         }
 
@@ -204,7 +204,7 @@ BOOL ValidDB(CString csPath, BOOL bUpgrade)
 
                 db.execDML("CREATE INDEX Main_NoGroup ON Main(bIsGroup ASC, stickyClipOrder DESC, clipOrder DESC);");
                 db.execDML("CREATE INDEX Main_InGroup ON Main(lParentId ASC, bIsGroup ASC, stickyClipGroupOrder DESC, clipGroupOrder DESC);");
-                db.execDML("CREATE INDEX Data_ParentId_Format ON Data(lParentID COLLATE BINARY ASC, strClipBoardFormat COLLATE NOCASE ASC);");
+                db.execDML("CREATE INDEX IF NOT EXISTS Data_ParentId_Format ON Data(lParentID COLLATE BINARY ASC, strClipBoardFormat COLLATE NOCASE ASC);");
             }
         }
         catch (CppSQLite3Exception&) {}
@@ -250,7 +250,7 @@ BOOL CreateDB(CString csFile)
 
         db.execDML("PRAGMA auto_vacuum = 1");
 
-        db.execDML("CREATE TABLE Main("
+        db.execDML("CREATE TABLE IF NOT EXISTS Main("
                    "lID INTEGER PRIMARY KEY AUTOINCREMENT, "
                    "lDate INTEGER, "
                    "mText TEXT, "
@@ -269,44 +269,44 @@ BOOL CreateDB(CString csFile)
                    "MoveToGroupShortCut INTEGER, "
                    "GlobalMoveToGroupShortCut INTEGER);");
 
-        db.execDML("CREATE TABLE Data("
+        db.execDML("CREATE TABLE IF NOT EXISTS Data("
                    "lID INTEGER PRIMARY KEY AUTOINCREMENT, "
                    "lParentID INTEGER, "
                    "strClipBoardFormat TEXT, "
                    "ooData BLOB);");
 
-        db.execDML("CREATE TABLE Types("
+        db.execDML("CREATE TABLE IF NOT EXISTS Types("
                    "lID INTEGER PRIMARY KEY AUTOINCREMENT, "
                    "TypeText TEXT);");
 
-        db.execDML("CREATE UNIQUE INDEX Main_ID on Main(lID ASC)");
-        db.execDML("CREATE UNIQUE INDEX Data_ID on Data(lID ASC)");
-        db.execDML("CREATE INDEX Main_ClipOrder on Main(clipOrder DESC)");
-        db.execDML("CREATE INDEX Main_ClipGroupOrder on Main(clipGroupOrder DESC)");
-        db.execDML("CREATE INDEX Main_ParentId on Main(lParentID DESC)");
-        db.execDML("CREATE INDEX Main_IsGroup on Main(bIsGroup DESC)");
+        db.execDML("CREATE UNIQUE INDEX IF NOT EXISTS Main_ID on Main(lID ASC)");
+        db.execDML("CREATE UNIQUE INDEX IF NOT EXISTS Data_ID on Data(lID ASC)");
+        db.execDML("CREATE INDEX IF NOT EXISTS Main_ClipOrder on Main(clipOrder DESC)");
+        db.execDML("CREATE INDEX IF NOT EXISTS Main_ClipGroupOrder on Main(clipGroupOrder DESC)");
+        db.execDML("CREATE INDEX IF NOT EXISTS Main_ParentId on Main(lParentID DESC)");
+        db.execDML("CREATE INDEX IF NOT EXISTS Main_IsGroup on Main(bIsGroup DESC)");
 
-        db.execDML("CREATE TRIGGER delete_data_trigger BEFORE DELETE ON Main FOR EACH ROW\n"
+        db.execDML("CREATE TRIGGER IF NOT EXISTS delete_data_trigger BEFORE DELETE ON Main FOR EACH ROW\n"
                    "BEGIN\n"
                    "INSERT INTO MainDeletes VALUES(old.lID, datetime('now'));\n"
                    "END\n");
 
-        db.execDML("CREATE TABLE CopyBuffers("
+        db.execDML("CREATE TABLE IF NOT EXISTS CopyBuffers("
                    "lID INTEGER PRIMARY KEY AUTOINCREMENT, "
                    "lClipID INTEGER, "
                    "lCopyBuffer INTEGER)");
 
-        db.execDML("CREATE TABLE MainDeletes("
+        db.execDML("CREATE TABLE IF NOT EXISTS MainDeletes("
                    "clipID INTEGER,"
                    "modifiedDate)");
 
-        db.execDML("CREATE TRIGGER MainDeletes_delete_data_trigger BEFORE DELETE ON MainDeletes FOR EACH ROW\n"
+        db.execDML("CREATE TRIGGER IF NOT EXISTS MainDeletes_delete_data_trigger BEFORE DELETE ON MainDeletes FOR EACH ROW\n"
                    "BEGIN\n"
                    "DELETE FROM CopyBuffers WHERE lClipID = old.clipID;\n"
                    "DELETE FROM Data WHERE lParentID = old.clipID;\n"
                    "END\n");
 
-        db.execDML("CREATE INDEX Data_ParentId_Format ON Data(lParentID COLLATE BINARY ASC, strClipBoardFormat COLLATE NOCASE ASC);");
+        db.execDML("CREATE INDEX IF NOT EXISTS Data_ParentId_Format ON Data(lParentID COLLATE BINARY ASC, strClipBoardFormat COLLATE NOCASE ASC);");
 
         db.execDML("CREATE INDEX IF NOT EXISTS Main_TopLevelParentID ON Main(lParentId ASC, stickyClipOrder DESC, bIsGroup ASC, clipOrder DESC);");
         db.execDML("CREATE INDEX IF NOT EXISTS Main_TopLevel ON Main(stickyClipOrder DESC, bIsGroup ASC, clipOrder DESC);");

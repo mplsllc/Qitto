@@ -57,6 +57,10 @@ public:
 	int m_parentId;
 
 	CClipFormat(CLIPFORMAT cfType = 0, HGLOBAL hgData = 0, int parentId = -1);
+#ifdef LINUX_PORT
+	CClipFormat(const CClipFormat &other);
+	CClipFormat& operator=(const CClipFormat &other);
+#endif
 	~CClipFormat();
 
 	void Clear();
