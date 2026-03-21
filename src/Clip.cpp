@@ -2,6 +2,10 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#ifdef LINUX_PORT
+// On Linux, replaced by linux/Clip_linux.cpp
+#else
+
 #include "stdafx.h"
 #include "CP_Main.h"
 #include "Clip.h"
@@ -2194,3 +2198,5 @@ const CClipList& CClipList::operator=(const CClipList &cliplist)
 	
 	return *this;
 }
+
+#endif // !LINUX_PORT
