@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Qitto
+Comment=Clipboard Manager — Qt6 port of Ditto
+Exec=qitto
+Icon=qitto
+Terminal=false
+Type=Application
+Categories=Utility;
+StartupNotify=false
