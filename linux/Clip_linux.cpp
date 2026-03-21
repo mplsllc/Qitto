@@ -24,8 +24,10 @@ CClipFormat::CClipFormat(CLIPFORMAT cfType, HGLOBAL hgData, int parentId)
 {
 }
 
-// Copy constructor — shallow copy, does NOT auto-delete (avoids double-free
-// when QVector copies elements during reallocation)
+// Copy constructor — shallow copy, NEVER auto-deletes.
+// HGLOBAL ownership is managed explicitly by CClip::EmptyFormats / RemoveAll,
+// not by CClipFormat destructors. This prevents double-free when QVector
+// copies elements during reallocation.
 CClipFormat::CClipFormat(const CClipFormat &other)
     : m_cfType(other.m_cfType), m_hgData(other.m_hgData),
       m_autoDeleteData(false), m_dataId(other.m_dataId), m_parentId(other.m_parentId)
@@ -35,7 +37,6 @@ CClipFormat::CClipFormat(const CClipFormat &other)
 CClipFormat& CClipFormat::operator=(const CClipFormat &other)
 {
     if (this != &other) {
-        // Don't free our existing data if we're just a shallow copy
         m_cfType = other.m_cfType;
         m_hgData = other.m_hgData;
         m_autoDeleteData = false;
@@ -47,7 +48,8 @@ CClipFormat& CClipFormat::operator=(const CClipFormat &other)
 
 CClipFormat::~CClipFormat()
 {
-    Free();
+    // On Linux, never auto-delete from destructor.
+    // HGLOBAL lifetime is managed by CClip::EmptyFormats.
 }
 
 void CClipFormat::Clear()
@@ -190,6 +192,13 @@ const CClip& CClip::operator=(const CClip &clip)
 
 void CClip::EmptyFormats()
 {
+    // Explicitly free all HGLOBALs since CClipFormat destructor doesn't on Linux
+    for (INT_PTR i = 0; i < m_Formats.GetSize(); i++) {
+        if (m_Formats.ElementAt(i).m_hgData) {
+            GlobalFree(m_Formats.ElementAt(i).m_hgData);
+            m_Formats.ElementAt(i).m_hgData = 0;
+        }
+    }
     m_Formats.RemoveAll();
 }
 
@@ -200,14 +209,8 @@ bool CClip::AddFormat(CLIPFORMAT cfType, void* pData, UINT nLen, bool setDesc)
         return false;
 
     CClipFormat cf(cfType, hGlobal, -1);
-    // cf has autoDeleteData=true (owns the data).
-    // CArray::Add copies cf — copy constructor sets autoDeleteData=false.
-    // After Add, cf destructor runs but cf is the original owner.
-    // We need the vector's copy to own the data instead.
-    cf.m_autoDeleteData = false; // prevent cf destructor from freeing
-    INT_PTR idx = m_Formats.Add(cf);
-    m_Formats.ElementAt(idx).m_autoDeleteData = true; // vector copy owns it
-    m_Formats.ElementAt(idx).m_hgData = hGlobal;
+    cf.m_autoDeleteData = false; // never auto-delete on Linux
+    m_Formats.Add(cf);
 
     m_lTotalCopySize += nLen;
 
