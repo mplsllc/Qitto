@@ -3,8 +3,14 @@
 //      are changed infrequently
 //
 
+#ifdef LINUX_PORT
+// Linux port: use compat.h instead of MFC/Win32 headers
+#pragma once
+#include "linux/compat.h"
+#else // Windows / MFC build
+
 #if !defined(AFX_STDAFX_H__56F3D184_7208_47FE_AFE2_E270325F356A__INCLUDED_)
-//#define _ATL_APARTMENT_THREADED 
+//#define _ATL_APARTMENT_THREADED
 #define AFX_STDAFX_H__56F3D184_7208_47FE_AFE2_E270325F356A__INCLUDED_
 
 #if _MSC_VER > 1000
@@ -55,3 +61,5 @@ using namespace Gdiplus;
 #include <atlcom.h>
 #include <atlctl.h>
 #endif // !defined(AFX_STDAFX_H__56F3D184_7208_47FE_AFE2_E270325F356A__INCLUDED_)
+
+#endif // LINUX_PORT
