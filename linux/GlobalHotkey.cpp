@@ -9,14 +9,12 @@
 #include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
 
-// Get xcb connection from Qt's platform interface
+// Get xcb connection via Qt6 QNativeInterface
 static xcb_connection_t *getXcbConnection()
 {
-    auto *native = QGuiApplication::platformNativeInterface();
-    if (!native) return nullptr;
-    return reinterpret_cast<xcb_connection_t *>(
-        native->nativeResourceForScreen(QByteArrayLiteral("connection"),
-                                         QGuiApplication::primaryScreen()));
+    auto *x11app = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (!x11app) return nullptr;
+    return x11app->connection();
 }
 
 GlobalHotkey::GlobalHotkey(QObject *parent)

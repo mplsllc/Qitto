@@ -1,4 +1,6 @@
-#ifndef LINUX_PORT
+#ifdef LINUX_PORT
+#include "linux/compat.h"
+#else
 #include "stdafx.h"
 #endif
 #include "RichTextAggregator.h"

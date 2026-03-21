@@ -1,0 +1,13 @@
+/home/patrick/Webs/ditto/build/CMakeFiles/qitto.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/test_crc32.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/test.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/edit_cache.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/rebuild_cache.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/list_install_components.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/install.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/install/local.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/install/strip.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/qitto_autogen_timestamp_deps.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/qitto_autogen.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/test_crc32_autogen_timestamp_deps.dir
+/home/patrick/Webs/ditto/build/CMakeFiles/test_crc32_autogen.dir

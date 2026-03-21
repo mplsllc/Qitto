@@ -1,13 +1,25 @@
 // Misc_linux.cpp — Linux implementations of Ditto's Misc utility functions
-// Only functions NOT already provided as inlines in compat.h.
-// StrF, Log, IsValid, NewGlobalP, NewGlobal, NewGlobalH, CopyToGlobal*,
-// CompareGlobal* are all in compat.h as inlines now.
+// IsValid, NewGlobalP, NewGlobal, NewGlobalH are inlines in compat.h.
+// StrF, log, CopyToGlobal*, CompareGlobal*, GetFormatName/ID are here.
 
 #include "StdAfx.h"
 #include "Misc.h"
 #include "sqlite/CppSQLite3.h"
 
 #include <cstring>
+
+// ============================================================================
+// StrF — printf-style string formatter (used everywhere in Ditto)
+// ============================================================================
+CString StrF(const TCHAR * pszFormat, ...)
+{
+    CString str;
+    va_list argList;
+    va_start(argList, pszFormat);
+    str.FormatV(pszFormat, argList);
+    va_end(argList);
+    return str;
+}
 
 // ============================================================================
 // Logging helpers (log() with file/line signature used by Log macro)

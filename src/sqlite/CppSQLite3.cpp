@@ -774,7 +774,7 @@ void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** values)
 
 	try
 	{
-		if (std::regex_search(text, std::regex(reg, std::regex::flag_type::icase)))
+		if (std::regex_search(text, std::regex(reg, std::regex_constants::icase)))
 		{
 			sqlite3_result_int(context, 1);
 		}
@@ -854,13 +854,16 @@ void CppSQLite3DB::open(const TCHAR* szFile)
 
 	setBusyTimeout(mnBusyTimeoutMs);
 
+#ifndef LINUX_PORT
 	sqlite3_enable_load_extension(mpDB, 1);
 	char* e;
 	sqlite3_load_extension(mpDB, "ICU_Loader.dll", "sqlite3_icu_init", &e);
+#endif
 }
 
 void CppSQLite3DB::SetRegexCaseInsensitive(bool insensitive)
 {
+#ifndef LINUX_PORT
 	auto h = ::LoadLibrary(_T("ICU_Loader.dll"));
 	if (h != NULL)
 	{
@@ -881,6 +884,9 @@ void CppSQLite3DB::SetRegexCaseInsensitive(bool insensitive)
 
 		FreeLibrary(h);
 	}
+#else
+	(void)insensitive; // ICU regex flags not available on Linux
+#endif
 }
 
 bool CppSQLite3DB::close()

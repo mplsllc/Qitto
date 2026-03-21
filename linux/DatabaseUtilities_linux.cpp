@@ -4,6 +4,7 @@
 
 #include "StdAfx.h"
 #include "DatabaseUtilities.h"
+#include "Misc.h"
 
 #include <QDir>
 #include <QFileInfo>

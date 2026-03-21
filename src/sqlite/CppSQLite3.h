@@ -28,10 +28,11 @@
 #ifndef _CppSQLite3_H_
 #define _CppSQLite3_H_
 
-//#include "sqlite3.h"
 #ifdef LINUX_PORT
+#include "linux/compat.h"
 #include <sqlite3.h>
 #else
+//#include "sqlite3.h"
 #include "sqlite3mc_amalgamation.h"
 #endif
 #include <cstdio>

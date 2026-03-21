@@ -341,6 +341,9 @@ private:
     mutable QByteArray m_utf8Cache;
 };
 
+// Forward-declare CString so CStringA can accept it
+class CString;
+
 // CStringA — narrow string, wraps QByteArray
 class CStringA : public QByteArray {
 public:
@@ -348,6 +351,9 @@ public:
     CStringA(const char *s) : QByteArray(s ? s : "") {}
     CStringA(const char *s, int len) : QByteArray(s, len) {}
     CStringA(const QByteArray &b) : QByteArray(b) {}
+    // Accept CString (converts to UTF-8)
+    inline CStringA(const CString &s);
+    inline CStringA& operator=(const CString &s);
 
     operator const char*() const { return constData(); }
 
@@ -427,6 +433,10 @@ public:
 // CStringW — wide string, alias for CString (UTF-8 on Linux)
 typedef CString CStringW;
 
+// Deferred inline implementations for CStringA ↔ CString conversion
+inline CStringA::CStringA(const CString &s) : QByteArray(static_cast<const QString&>(s).toUtf8()) {}
+inline CStringA& CStringA::operator=(const CString &s) { *this = CStringA(s); return *this; }
+
 // ============================================================================
 // CTime — wraps QDateTime with MFC-compatible API
 // ============================================================================
@@ -500,29 +510,12 @@ public:
     void RemoveAll() { QVector<CString>::clear(); }
 };
 
-// ============================================================================
-// StrF — Ditto's printf-style string formatter (used everywhere)
-// ============================================================================
-inline CString StrF(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    char buf[4096];
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-    return CString(buf);
-}
+// StrF — declared in Misc.h, defined in Misc_linux.cpp
+// Do NOT define StrF() here — it's a real function, not an inline.
 
-// ============================================================================
-// Log — Ditto's logging function (simplified for Linux)
-// ============================================================================
-inline void Log(const CString &msg) {
-    fprintf(stderr, "[Qitto] %s\n", static_cast<const char*>(msg));
-}
-
-// Overloads matching Ditto's Log signatures
-inline void Log(const char *msg, bool = false, CString = CString(), long = 0) {
-    fprintf(stderr, "[Qitto] %s\n", msg);
-}
+// Log — declared in Misc.h, defined in Misc_linux.cpp
+// The Log macro (#define Log(msg) log(msg, false, __FILE__, __LINE__)) is in Misc.h
+// Do NOT define Log() here — it would conflict with the macro.
 
 // ============================================================================
 // Unicode macros — no-ops on Linux (UTF-8 native)

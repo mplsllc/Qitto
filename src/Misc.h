@@ -1,5 +1,5 @@
 
-#if !defined(AFX_CP_GUI_GLOBALS__FBCDED09_A6F2_47EB_873F_50A746EBC86B__INCLUDED_)
+#if !defined(AFX_CP_GUI_H__FBCDED09_A6F2_47EB_873F_50A746EBC86B__INCLUDED_)
 #define AFX_CP_GUI_H__FBCDED09_A6F2_47EB_873F_50A746EBC86B__INCLUDED_
 
 #if !defined(LINUX_PORT) && _MSC_VER > 1000
@@ -119,12 +119,16 @@ bool IsAppWnd( HWND hWnd );
 #endif
 
 // Global Memory Helper Functions
+// On Linux, IsValid/NewGlobalP/NewGlobal/NewGlobalH are inlined in compat.h
+// CopyToGlobal*/CompareGlobal* are in Misc_linux.cpp
+#ifndef LINUX_PORT
 BOOL IsValid(HGLOBAL hGlobal);
-void CopyToGlobalHP(HGLOBAL hDest, LPVOID pBuf, SIZE_T ulBufLen);
-void CopyToGlobalHH(HGLOBAL hDest, HGLOBAL hSource, SIZE_T ulBufLen);
 HGLOBAL NewGlobalP(LPVOID pBuf, SIZE_T nLen);
 HGLOBAL NewGlobalH(HGLOBAL hSource, SIZE_T nLen);
 HGLOBAL NewGlobal(SIZE_T nLen);
+#endif
+void CopyToGlobalHP(HGLOBAL hDest, LPVOID pBuf, SIZE_T ulBufLen);
+void CopyToGlobalHH(HGLOBAL hDest, HGLOBAL hSource, SIZE_T ulBufLen);
 int CompareGlobalHP(HGLOBAL hLeft, LPVOID pBuf, SIZE_T ulBufLen);
 int CompareGlobalHH(HGLOBAL hLeft, HGLOBAL hRight, SIZE_T ulBufLen);
 
@@ -250,4 +254,4 @@ VersionInfo GetRunningVersion();
 CString GetVersionString(VersionInfo version);
 #endif
 
-#endif // !defined(AFX_CP_GUI_GLOBALS__FBCDED09_A6F2_47EB_873F_50A746EBC86B__INCLUDED_)
+#endif // !defined(AFX_CP_GUI_H__FBCDED09_A6F2_47EB_873F_50A746EBC86B__INCLUDED_)
