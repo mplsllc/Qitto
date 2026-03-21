@@ -62,9 +62,50 @@ typedef unsigned char UCHAR;
 #define _TEXT(x) x
 
 // ============================================================================
-// Clipboard format type (uint on Linux)
+// Clipboard format type and standard format constants
+// On Windows these are registered dynamically. On Linux we use fixed IDs
+// matching the Windows values so the DB schema is compatible.
 // ============================================================================
 typedef unsigned int CLIPFORMAT;
+
+#define CF_TEXT             1
+#define CF_BITMAP           2
+#define CF_METAFILEPICT     3
+#define CF_SYLK             4
+#define CF_DIF              5
+#define CF_TIFF             6
+#define CF_OEMTEXT          7
+#define CF_DIB              8
+#define CF_PALETTE          9
+#define CF_PENDATA          10
+#define CF_RIFF             11
+#define CF_WAVE             12
+#define CF_UNICODETEXT      13
+#define CF_ENHMETAFILE      14
+#define CF_HDROP            15
+#define CF_LOCALE           16
+#define CF_OWNERDISPLAY     0x0080
+#define CF_DSPTEXT          0x0081
+#define CF_DSPBITMAP        0x0082
+#define CF_DSPMETAFILEPICT  0x0083
+#define CF_DSPENHMETAFILE   0x008E
+
+// RegisterClipboardFormat — on Linux, just hash the name to a uint
+inline CLIPFORMAT RegisterClipboardFormat(const char *name) {
+    // Simple hash — produces stable IDs for custom format names
+    unsigned int hash = 0xC000; // Start above standard format range
+    while (*name) {
+        hash = hash * 31 + static_cast<unsigned char>(*name++);
+    }
+    return static_cast<CLIPFORMAT>(hash);
+}
+
+// GetClipboardFormatName — on Linux, not available for custom formats
+// Ditto only calls this in GetFormatName() fallback for unknown types
+inline int GetClipboardFormatName(CLIPFORMAT /*format*/, char *buf, int bufSize) {
+    if (bufSize > 0) buf[0] = '\0';
+    return 0;
+}
 
 // ============================================================================
 // Error codes

@@ -1,3 +1,7 @@
+#ifdef LINUX_PORT
+// On Linux, Misc.cpp is replaced by linux/Misc_linux.cpp
+// This file only compiles on Windows.
+#else
 #include "stdafx.h"
 #include "CP_Main.h"
 #include "Misc.h"
@@ -6,8 +10,8 @@
 #include "AlphaBlend.h"
 #include "Tlhelp32.h"
 #include <Wininet.h>
-#include <sys/types.h>  
-#include <sys/stat.h> 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "Path.h"
 #include <regex>
 #include <vector>
@@ -1775,3 +1779,5 @@ VersionInfo GetRunningVersion()
 
 	return(verInfo);
 }
+
+#endif // !LINUX_PORT
