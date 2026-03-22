@@ -13,6 +13,7 @@
 #include <QApplication>
 #include <QScrollBar>
 #include <QPainter>
+#include <QTimer>
 #include <QFile>
 #include <QStandardPaths>
 #include <QToolButton>
@@ -249,7 +250,11 @@ void MainWindow::onClipCaptured(qint64 clipId)
 bool MainWindow::event(QEvent *event)
 {
     if (event->type() == QEvent::WindowDeactivate) {
-        hidePopup();
+        // Delay hide slightly so click events on list items can fire first
+        QTimer::singleShot(100, this, [this]() {
+            if (!m_listView->underMouse() && !m_searchBox->underMouse())
+                hidePopup();
+        });
         return true;
     }
     return QWidget::event(event);
