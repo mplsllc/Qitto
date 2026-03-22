@@ -20,6 +20,9 @@ public:
     int pasteDelayMs() const;
     void setPasteDelayMs(int ms);
 
+    bool autoPasteX11() const;
+    void setAutoPasteX11(bool enabled);
+
     int linesPerRow() const;
     double transparency() const;
 

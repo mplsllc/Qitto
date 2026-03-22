@@ -30,6 +30,9 @@ void Settings::setShowPopupHotkey(const QString &hotkey) { m_settings.setValue("
 int Settings::pasteDelayMs() const { return m_settings.value("paste/delayMs", 50).toInt(); }
 void Settings::setPasteDelayMs(int ms) { m_settings.setValue("paste/delayMs", ms); }
 
+bool Settings::autoPasteX11() const { return m_settings.value("paste/autoPasteX11", false).toBool(); }
+void Settings::setAutoPasteX11(bool enabled) { m_settings.setValue("paste/autoPasteX11", enabled); }
+
 int Settings::linesPerRow() const { return m_settings.value("ui/linesPerRow", 4).toInt(); }
 double Settings::transparency() const { return m_settings.value("ui/transparency", 1.0).toDouble(); }
 int Settings::descTextSize() const { return m_settings.value("ui/descTextSize", 200).toInt(); }

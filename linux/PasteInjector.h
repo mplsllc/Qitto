@@ -16,11 +16,7 @@ public slots:
 private:
     ClipboardMonitor *m_monitor;
     QString m_sessionType;
-    QString m_pasteTool;  // "xdotool", "wtype", "ydotool", or "none"
+    bool m_autoPasteX11 = false;  // optional: simulate Ctrl+V on X11 via xdotool
 
-    QString getActiveWindowId();
-    void activateWindow(const QString &windowId);
-    void simulatePasteXdotool();
-    void simulatePasteWtype(const QString &text);
-    void simulatePasteYdotool();
+    void autoPasteX11(const QString &windowId);
 };
