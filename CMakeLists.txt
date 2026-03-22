@@ -45,6 +45,7 @@ set(LINUX_SOURCES
     linux/GlobalHotkey.cpp
     linux/HotkeyManager.cpp
     linux/PasteInjector.cpp
+    linux/PortalInputInjector.cpp
     linux/SettingsDialog.cpp
 )
 

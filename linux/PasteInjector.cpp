@@ -1,7 +1,10 @@
-// PasteInjector — Klipper-style: set clipboard, hide popup, user pastes.
-// On X11, optionally simulates Ctrl+V via xdotool (opt-in setting).
+// PasteInjector — sets clipboard then injects Ctrl+V.
+// On Wayland: uses XDG RemoteDesktop portal (one-time user approval).
+// On X11: uses xdotool (optional, opt-in).
+// Fallback: clipboard-set only, user pastes manually.
 
 #include "PasteInjector.h"
+#include "PortalInputInjector.h"
 #include "ClipboardMonitor.h"
 #include "FormatMapper.h"
 #include "Settings.h"
@@ -24,16 +27,24 @@ PasteInjector::PasteInjector(ClipboardMonitor *monitor, QObject *parent)
 {
     m_sessionType = QProcessEnvironment::systemEnvironment().value("XDG_SESSION_TYPE", "x11");
 
-    // Auto-paste only available on X11 (xdotool works reliably there)
-    // Disabled by default — user enables in Settings if they want it
-    if (m_sessionType == "x11") {
+    if (m_sessionType == "wayland") {
+        // Try RemoteDesktop portal for auto-paste on Wayland
+        m_portalInjector = std::make_unique<PortalInputInjector>(this);
+        if (m_portalInjector->init()) {
+            QittoApp::dbg("PasteInjector: RemoteDesktop portal ready — auto-paste enabled");
+        } else {
+            QittoApp::dbg("PasteInjector: RemoteDesktop portal not available — clipboard-set only");
+            m_portalInjector.reset();
+        }
+    } else if (m_sessionType == "x11") {
         m_autoPasteX11 = Settings::instance().autoPasteX11();
         QittoApp::dbg("PasteInjector: X11 auto-paste " + QString(m_autoPasteX11 ? "enabled" : "disabled"));
     }
 
-    QittoApp::dbg("PasteInjector: session=" + m_sessionType + " mode="
-                   + (m_autoPasteX11 ? "auto-paste" : "clipboard-set"));
+    QittoApp::dbg("PasteInjector: session=" + m_sessionType);
 }
+
+PasteInjector::~PasteInjector() = default;
 
 void PasteInjector::pasteClip(qint64 clipId)
 {
@@ -43,21 +54,20 @@ void PasteInjector::pasteClip(qint64 clipId)
     CClip clip;
     clip.LoadMainTable((int)clipId);
     if (!clip.LoadFormats((int)clipId)) {
-        QittoApp::dbg("PasteInjector: failed to load formats for clip " + QString::number(clipId));
+        QittoApp::dbg("PasteInjector: failed to load formats");
         return;
     }
 
-    // Step 2: Record active window (X11 auto-paste only)
+    // Step 2: Record active window (X11 only)
     QString activeWid;
     if (m_autoPasteX11) {
         QProcess proc;
         proc.start("xdotool", {"getactivewindow"});
         proc.waitForFinished(1000);
         activeWid = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        QittoApp::dbg("PasteInjector: active window=" + activeWid);
     }
 
-    // Step 3: Build QMimeData from CClipFormats
+    // Step 3: Build QMimeData
     QMimeData *mimeData = new QMimeData();
     FormatMapper &mapper = FormatMapper::instance();
 
@@ -68,36 +78,40 @@ void PasteInjector::pasteClip(qint64 clipId)
 
         void *data = GlobalLock(cf.m_hgData);
         int size = (int)GlobalSize(cf.m_hgData);
-        if (data && size > 0) {
+        if (data && size > 0)
             mimeData->setData(mime, QByteArray((const char*)data, size));
-            QittoApp::dbg("PasteInjector: set " + mime + " (" + QString::number(size) + " bytes)");
-        }
         GlobalUnlock(cf.m_hgData);
     }
 
-    // Step 4: Set clipboard (self-ignore so monitor doesn't re-capture)
+    // Step 4: Set clipboard
     m_monitor->setSelfIgnore(true);
     QApplication::clipboard()->setMimeData(mimeData);
-    QittoApp::dbg("PasteInjector: clipboard set — "
-                   + QString(m_autoPasteX11 ? "will auto-paste" : "user pastes with Ctrl+V"));
+    QittoApp::dbg("PasteInjector: clipboard set");
 
-    // Step 5: On X11 with auto-paste, simulate Ctrl+V after a short delay
-    if (m_autoPasteX11 && !activeWid.isEmpty()) {
-        int delayMs = Settings::instance().pasteDelayMs();
+    // Step 5: Auto-paste
+    int delayMs = Settings::instance().pasteDelayMs();
+
+    if (m_portalInjector && m_portalInjector->isReady()) {
+        // Wayland — inject Ctrl+V via RemoteDesktop portal
+        QTimer::singleShot(delayMs, this, [this]() {
+            m_portalInjector->sendCtrlV();
+        });
+    } else if (m_autoPasteX11 && !activeWid.isEmpty()) {
+        // X11 — inject via xdotool
         QTimer::singleShot(delayMs, this, [this, activeWid]() {
             autoPasteX11(activeWid);
         });
+    } else {
+        QittoApp::dbg("PasteInjector: clipboard set — user pastes with Ctrl+V");
     }
 }
 
 void PasteInjector::autoPasteX11(const QString &windowId)
 {
-    // Restore focus to original window
     QProcess focus;
     focus.start("xdotool", {"windowactivate", "--sync", windowId});
     focus.waitForFinished(2000);
 
-    // Simulate Ctrl+V
     QProcess paste;
     paste.start("xdotool", {"key", "--clearmodifiers", "ctrl+v"});
     paste.waitForFinished(2000);
