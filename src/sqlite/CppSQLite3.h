@@ -41,10 +41,22 @@
 #define CPPSQLITE_ERROR 1000
 
 #ifdef LINUX_PORT
-// On Linux, TCHAR is char (UTF-8), so use sqlite3_errmsg (not errmsg16)
+// On Linux, TCHAR is char (UTF-8), so use the UTF-8 sqlite3 APIs
 #define SQLITE3_ERRMSG(mpDB) const TCHAR* szError = sqlite3_errmsg(mpDB)
+#define SQLITE3_COLUMN_NAME(stmt, n) sqlite3_column_name(stmt, n)
+#define SQLITE3_COLUMN_TEXT(stmt, n) (const TCHAR*)sqlite3_column_text(stmt, n)
+#define SQLITE3_COLUMN_DECLTYPE(stmt, n) (const TCHAR*)sqlite3_column_decltype(stmt, n)
+#define SQLITE3_BIND_TEXT(stmt, n, val, len, destr) sqlite3_bind_text(stmt, n, val, len, destr)
+#define SQLITE3_OPEN(file, db) sqlite3_open(file, db)
+#define SQLITE3_PREPARE(db, sql, len, stmt, tail) sqlite3_prepare_v2(db, sql, len, stmt, (const char**)tail)
 #else
 #define SQLITE3_ERRMSG(mpDB) const TCHAR* szError = (const TCHAR*)sqlite3_errmsg16(mpDB)
+#define SQLITE3_COLUMN_NAME(stmt, n) sqlite3_column_name16(stmt, n)
+#define SQLITE3_COLUMN_TEXT(stmt, n) (const TCHAR*)sqlite3_column_text16(stmt, n)
+#define SQLITE3_COLUMN_DECLTYPE(stmt, n) (const TCHAR*)sqlite3_column_decltype16(stmt, n)
+#define SQLITE3_BIND_TEXT(stmt, n, val, len, destr) sqlite3_bind_text16(stmt, n, val, len, destr)
+#define SQLITE3_OPEN(file, db) sqlite3_open16(file, db)
+#define SQLITE3_PREPARE(db, sql, len, stmt, tail) sqlite3_prepare16_v2(db, sql, len, stmt, (const void**)tail)
 #endif
 
 int sqlite3_encode_binary(const unsigned char *in, int n, unsigned char *out);

@@ -218,7 +218,7 @@ const TCHAR* CppSQLite3Query::fieldValue(int nField)
 	#ifdef LINUX_PORT
 	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
 #else
-	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+	return SQLITE3_COLUMN_TEXT(mpVM, nField);
 #endif
 }
 
@@ -230,7 +230,7 @@ const TCHAR* CppSQLite3Query::fieldValue(const TCHAR* szField)
 	#ifdef LINUX_PORT
 	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
 #else
-	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+	return SQLITE3_COLUMN_TEXT(mpVM, nField);
 #endif
 }
 
@@ -305,7 +305,7 @@ const TCHAR* CppSQLite3Query::getStringField(int nField, const TCHAR* szNullValu
 		#ifdef LINUX_PORT
 	return (const TCHAR*)sqlite3_column_text(mpVM, nField);
 #else
-	return (const TCHAR*)sqlite3_column_text16(mpVM, nField);
+	return SQLITE3_COLUMN_TEXT(mpVM, nField);
 #endif
 	}
 }
@@ -382,7 +382,7 @@ int CppSQLite3Query::fieldIndex(const TCHAR* szField)
 	{
 		for (int nField = 0; nField < mnCols; nField++)
 		{
-			const TCHAR* szTemp = (const TCHAR*)sqlite3_column_name16(mpVM, nField);
+			const TCHAR* szTemp = (const TCHAR*)SQLITE3_COLUMN_NAME(mpVM, nField);
 
 			if(STRCMP(szField, szTemp) == 0)
 			{
@@ -409,7 +409,7 @@ const TCHAR* CppSQLite3Query::fieldName(int nCol)
 								DONT_DELETE_MSG);
 	}
 
-	return (const TCHAR*)sqlite3_column_name16(mpVM, nCol);
+	return (const TCHAR*)SQLITE3_COLUMN_NAME(mpVM, nCol);
 }
 
 
@@ -424,7 +424,7 @@ const TCHAR* CppSQLite3Query::fieldDeclType(int nCol)
 								DONT_DELETE_MSG);
 	}
 
-	return (const TCHAR*)sqlite3_column_decltype16(mpVM, nCol);
+	return SQLITE3_COLUMN_DECLTYPE(mpVM, nCol);
 }
 
 
@@ -610,7 +610,7 @@ void CppSQLite3Statement::bind(int nParam, const TCHAR* szValue)
 #ifdef LINUX_PORT
 	int nRes = sqlite3_bind_text(mpVM, nParam, szValue, -1, SQLITE_TRANSIENT);
 #else
-	int nRes = sqlite3_bind_text16(mpVM, nParam, szValue, -1, SQLITE_TRANSIENT);
+	int nRes = SQLITE3_BIND_TEXT(mpVM, nParam, szValue, -1, SQLITE_TRANSIENT);
 #endif
 	if (nRes != SQLITE_OK)
 	{
@@ -829,7 +829,7 @@ void CppSQLite3DB::open(const TCHAR* szFile)
 #ifdef LINUX_PORT
 	int nRet = sqlite3_open(szFile, &mpDB);
 #else
-	int nRet = sqlite3_open16(szFile, &mpDB);
+	int nRet = SQLITE3_OPEN(szFile, &mpDB);
 #endif
 
 	//sqlite3_exec(mpDB, "PRAGMA rekey=123456", 0, 0, 0);
@@ -1067,7 +1067,7 @@ sqlite3_stmt* CppSQLite3DB::compile(const TCHAR* szSQL)
 #ifdef LINUX_PORT
 	int nRet = sqlite3_prepare_v2(mpDB, szSQL, -1, &pVM, (const char**)&szTail);
 #else
-	int nRet = sqlite3_prepare16_v2(mpDB, szSQL, -1, &pVM, (const void**)szTail);
+	int nRet = SQLITE3_PREPARE(mpDB, szSQL, -1, &pVM, szTail);
 #endif
 	if (nRet != SQLITE_OK)
 	{
