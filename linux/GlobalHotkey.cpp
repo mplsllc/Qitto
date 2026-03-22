@@ -7,6 +7,7 @@
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusReply>
+#include <QDBusMetaType>
 #include <QAction>
 
 #include <xcb/xcb.h>
@@ -103,65 +104,65 @@ bool GlobalHotkey::registerKGlobalAccel(const QKeySequence &keySequence)
              << "toggle_popup"             // shortcut unique name
              << "Show/Hide Qitto";         // shortcut friendly name
 
-    // Convert key sequence to int list for KGlobalAccel
-    QList<int> keys;
-    keys << keySequence[0].toCombined();
+    // Step 1: Register the action
+    QDBusMessage regMsg = QDBusMessage::createMethodCall(
+        "org.kde.kglobalaccel", "/kglobalaccel",
+        "org.kde.KGlobalAccel", "doRegister");
+    regMsg << QVariant::fromValue(actionId);
+    bus.call(regMsg, QDBus::Block, 2000);
 
-    QList<int> defaultKeys = keys;
+    // Step 2: Set the shortcut keys
+    // Signature: setShortcutKeys(as actionId, a(ai) keys, u flags) → a(ai)
+    // keys is array of key combos, each combo is array of ints
+    int keyCombined = keySequence[0].toCombined();
+    QList<int> singleKey;
+    singleKey << keyCombined;
+    QList<QList<int>> keys;
+    keys << singleKey;
 
-    // Call setShortcut
+    // Register the type for D-Bus marshalling
+    qDBusRegisterMetaType<QList<int>>();
+    qDBusRegisterMetaType<QList<QList<int>>>();
+
     QDBusMessage msg = QDBusMessage::createMethodCall(
-        "org.kde.kglobalaccel",
-        "/kglobalaccel",
-        "org.kde.KGlobalAccel",
-        "setShortcutKeys"
-    );
+        "org.kde.kglobalaccel", "/kglobalaccel",
+        "org.kde.KGlobalAccel", "setShortcutKeys");
     msg << QVariant::fromValue(actionId)
         << QVariant::fromValue(keys)
-        << uint(0x02);  // SetPresent flag = autoloading
+        << uint(0x02);  // SetPresent | Autoloading
 
-    QDBusReply<QList<int>> reply = bus.call(msg, QDBus::Block, 2000);
+    QDBusMessage reply = bus.call(msg, QDBus::Block, 2000);
 
-    if (!reply.isValid()) {
-        // Try the older API: setShortcut with different signature
-        QittoApp::dbg("KGlobalAccel setShortcutKeys failed: " + reply.error().message());
-        QittoApp::dbg("Trying alternative registration...");
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        QittoApp::dbg("KGlobalAccel setShortcutKeys failed: " + reply.errorMessage());
 
-        // Alternative: use setForeignShortcut
+        // Fallback: try setForeignShortcutKeys (same signature but no return)
         msg = QDBusMessage::createMethodCall(
-            "org.kde.kglobalaccel",
-            "/kglobalaccel",
-            "org.kde.KGlobalAccel",
-            "setForeignShortcutKeys"
-        );
+            "org.kde.kglobalaccel", "/kglobalaccel",
+            "org.kde.KGlobalAccel", "setForeignShortcutKeys");
         msg << QVariant::fromValue(actionId)
             << QVariant::fromValue(keys);
 
-        QDBusReply<void> reply2 = bus.call(msg, QDBus::Block, 2000);
-        if (!reply2.isValid()) {
-            QittoApp::dbg("KGlobalAccel registration failed: " + reply2.error().message());
+        reply = bus.call(msg, QDBus::Block, 2000);
+        if (reply.type() == QDBusMessage::ErrorMessage) {
+            QittoApp::dbg("KGlobalAccel setForeignShortcutKeys also failed: " + reply.errorMessage());
             return false;
         }
     }
 
-    // Connect to the KGlobalAccel notification signal
-    bus.connect(
-        "org.kde.kglobalaccel",
-        "/kglobalaccel",
-        "org.kde.KGlobalAccel",
-        "yourShortcutGotChanged",
-        this,
-        SLOT(Toggle())
-    );
+    QittoApp::dbg("KGlobalAccel: shortcut registered, key=" + QString::number(keyCombined));
 
-    // Also listen for the invokeShortcut signal
+    // Step 3: Listen for the shortcut activation signal
+    // yourShortcutsChanged(as actionId, a(ai) keys) fires when our shortcut is pressed
+    // We need a slot that matches — but the signal carries the actionId,
+    // so we connect and filter in the slot.
     bus.connect(
         "org.kde.kglobalaccel",
         "/kglobalaccel",
         "org.kde.KGlobalAccel",
-        "invokedShortcut",
+        "yourShortcutsChanged",
         this,
-        SLOT(Toggle())
+        SLOT(onShortcutPressed(QStringList))
     );
 
     m_registered = true;
@@ -170,9 +171,19 @@ bool GlobalHotkey::registerKGlobalAccel(const QKeySequence &keySequence)
     return true;
 }
 
+void GlobalHotkey::onShortcutPressed(const QStringList &actionId)
+{
+    // Filter — only respond to our action
+    if (actionId.size() >= 3 && actionId[0] == "qitto" && actionId[2] == "toggle_popup") {
+        QittoApp::dbg("KGlobalAccel: shortcut activated");
+        emit activated();
+    }
+}
+
 void GlobalHotkey::Toggle()
 {
-    QittoApp::dbg("Toggle() called via D-Bus/KGlobalAccel");
+    // D-Bus direct call fallback
+    QittoApp::dbg("Toggle() called via D-Bus");
     emit activated();
 }
 

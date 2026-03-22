@@ -40,6 +40,6 @@ private:
     bool m_usingKGlobalAccel = false;
 
 public slots:
-    // Called by KGlobalAccel via D-Bus when shortcut is triggered
     Q_SCRIPTABLE void Toggle();
+    void onShortcutPressed(const QStringList &actionId);
 };
