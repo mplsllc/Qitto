@@ -337,16 +337,10 @@ bool CClip::AddToDB(bool bCheckForDuplicates)
 {
     bool bResult;
 
-    fprintf(stderr, "[AddToDB] entry: formats=%d desc='%.30s'\n",
-            (int)m_Formats.GetSize(), (const char*)m_Desc);
-
     try
     {
         m_Time = CTime::GetCurrentTime().GetTime();
         m_CRC = GenerateCRC();
-
-        fprintf(stderr, "[AddToDB] CRC=%u time=%ld checkDup=%d parentId=%d\n",
-                m_CRC, (long)m_Time.GetTime(), bCheckForDuplicates, m_parentId);
 
         if (bCheckForDuplicates && m_parentId < 0)
         {
@@ -438,11 +432,8 @@ bool CClip::AddToMainTable()
                   m_moveToGroupShortCut,
                   m_globalMoveToGroupShortCut);
 
-        fprintf(stderr, "[AddToMainTable] SQL: %.200s\n", (const char*)cs);
         GetDittoDB().execDML(cs);
         m_id = (long)GetDittoDB().lastRowId();
-
-        fprintf(stderr, "[AddToMainTable] SUCCESS id=%d\n", m_id);
 
         Log(StrF("Added clip to main table, Id: %d, ParentId: %d Desc: %.40s, Order: %f",
                  m_id, m_parentId, (const char*)m_Desc, m_clipOrder));
@@ -450,10 +441,7 @@ bool CClip::AddToMainTable()
         m_LastAddedCRC = m_CRC;
         m_lastAddedID = m_id;
     }
-    catch (CppSQLite3Exception& e) {
-        fprintf(stderr, "[AddToMainTable] EXCEPTION %d: %s\n", e.errorCode(), e.errorMessage());
-        return false;
-    }
+    CATCH_SQLITE_EXCEPTION_AND_RETURN(false)
 
     return true;
 }
@@ -530,8 +518,6 @@ bool CClip::ModifyDescription()
 bool CClip::AddToDataTable()
 {
     CClipFormat* pCF;
-
-    fprintf(stderr, "[AddToDataTable] entry: m_id=%d, numFormats=%d\n", m_id, (int)m_Formats.GetSize());
 
     try
     {
