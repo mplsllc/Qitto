@@ -10,6 +10,7 @@
 #include <QDBusPendingCallWatcher>
 #include <QCoreApplication>
 #include <QThread>
+#include <QMessageBox>
 
 static int s_tokenCounter = 0;
 
@@ -39,6 +40,15 @@ QString PortalInputInjector::nextRequestToken()
 bool PortalInputInjector::init()
 {
     QittoApp::dbg("PortalInputInjector: initializing...");
+
+    // Explain to the user why we need this permission
+    QMessageBox::information(nullptr, "Qitto — Auto-Paste Setup",
+        "Qitto needs keyboard input permission to automatically paste "
+        "clips into your apps.\n\n"
+        "A system dialog will appear next asking to allow \"Remote Desktop\" "
+        "access. This is just keyboard simulation (like pressing Ctrl+V for you) "
+        "— Qitto does not record your screen or input.\n\n"
+        "This is a one-time approval per session.");
     m_initStep = 0;
 
     // Step 1: CreateSession
