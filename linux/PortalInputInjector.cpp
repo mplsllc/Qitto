@@ -74,25 +74,17 @@ bool PortalInputInjector::init()
 
     QittoApp::dbg("PortalInputInjector: CreateSession called, waiting for response...");
 
-    // Process events to receive the Response signal
-    for (int i = 0; i < 100 && m_initStep < 1; i++) {
+    // Process events to receive the Response signal.
+    // The user needs time to click "Allow" in the system dialog —
+    // give up to 60 seconds for the full flow.
+    for (int i = 0; i < 1200 && !m_ready; i++) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-        QThread::msleep(50);
-    }
-
-    if (m_initStep < 1) {
-        QittoApp::dbg("PortalInputInjector: CreateSession timeout");
-        return false;
-    }
-
-    // Wait for SelectDevices and Start responses
-    for (int i = 0; i < 200 && !m_ready; i++) {
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-        QThread::msleep(50);
+        if (!m_ready)
+            QThread::msleep(50);
     }
 
     if (!m_ready) {
-        QittoApp::dbg("PortalInputInjector: init did not complete (user may have denied access)");
+        QittoApp::dbg("PortalInputInjector: init timed out or user denied access");
         return false;
     }
 
