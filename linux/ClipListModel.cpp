@@ -65,7 +65,9 @@ void ClipListModel::refresh(const QString &searchText)
                        "LIMIT %d", (const char*)search, m_pageSize + 1);
         }
 
+        fprintf(stderr, "[ClipListModel] SQL: %s\n", (const char*)sql);
         CppSQLite3Query q = GetDittoDB().execQuery(sql);
+        fprintf(stderr, "[ClipListModel] query executed, eof=%d\n", q.eof());
 
         while (q.eof() == false) {
             ClipListItem item;
