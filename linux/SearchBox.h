@@ -12,6 +12,7 @@ signals:
     void searchChanged(const QString &text);
     void escapePressed();
     void arrowDownPressed();
+    void arrowUpPressed();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

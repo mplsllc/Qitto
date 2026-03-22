@@ -3,6 +3,7 @@
 #include <QAbstractListModel>
 #include <QVector>
 #include <QString>
+#include <QByteArray>
 #include <cstdint>
 
 struct ClipListItem {
@@ -13,6 +14,8 @@ struct ClipListItem {
     double clipOrder;
     double stickyClipOrder;
     uint32_t crc;
+    bool hasImage = false;
+    QByteArray imageData;  // raw CF_DIB/PNG data for thumbnail
 };
 
 class ClipListModel : public QAbstractListModel {
@@ -23,7 +26,9 @@ public:
         IdRole = Qt::UserRole + 1,
         DateRole,
         IsGroupRole,
-        CrcRole
+        CrcRole,
+        HasImageRole,
+        ImageDataRole
     };
 
     explicit ClipListModel(QObject *parent = nullptr);
@@ -42,4 +47,6 @@ private:
     QString m_searchText;
     int m_pageSize = 50;
     bool m_hasMore = false;
+
+    void loadImageData(ClipListItem &item);
 };

@@ -2,6 +2,9 @@
 
 #include <QWidget>
 #include <QListView>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QLabel>
 
 class ClipListModel;
 class ClipDelegate;
@@ -17,12 +20,16 @@ public:
     void showPopup();
     void hidePopup();
 
+    // Load custom QSS theme file
+    void loadTheme(const QString &qssPath);
+
 signals:
     void clipSelected(qint64 clipId);
 
 protected:
     bool event(QEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
 
 private slots:
     void onSearchChanged(const QString &text);
@@ -35,6 +42,8 @@ private:
     ClipListModel *m_model;
     ClipDelegate *m_delegate;
     ClipboardMonitor *m_monitor;
+    QPushButton *m_closeBtn;
+    QLabel *m_brandLabel;
 
     void setupUi();
     void positionAtCursor();

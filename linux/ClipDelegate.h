@@ -17,6 +17,6 @@ public:
     void setSearchHighlight(const QString &text);
 
 private:
-    int m_linesPerRow = 4;
+    int m_linesPerRow = 2;
     QString m_highlight;
 };

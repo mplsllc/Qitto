@@ -38,8 +38,36 @@ QVariant ClipListModel::data(const QModelIndex &index, int role) const
         return item.isGroup;
     case CrcRole:
         return item.crc;
+    case HasImageRole:
+        return item.hasImage;
+    case ImageDataRole:
+        return item.imageData;
     default:
         return {};
+    }
+}
+
+void ClipListModel::loadImageData(ClipListItem &item)
+{
+    // Check if this clip has an image format (CF_DIB or PNG)
+    try {
+        CppSQLite3Query q = GetDittoDB().execQueryEx(
+            "SELECT strClipBoardFormat, ooData FROM Data WHERE lParentID = %d "
+            "AND (strClipBoardFormat = 'CF_DIB' OR strClipBoardFormat = 'PNG' "
+            "OR strClipBoardFormat = 'CF_BITMAP') LIMIT 1",
+            (int)item.id);
+
+        if (q.eof() == false) {
+            int nDataLen = 0;
+            const unsigned char *cData = q.getBlobField("ooData", nDataLen);
+            if (cData && nDataLen > 0) {
+                item.hasImage = true;
+                item.imageData = QByteArray(reinterpret_cast<const char*>(cData), nDataLen);
+            }
+        }
+    }
+    catch (CppSQLite3Exception &) {
+        // Not an image clip, that's fine
     }
 }
 
@@ -76,6 +104,11 @@ void ClipListModel::refresh(const QString &searchText)
             item.isGroup = q.getIntField("bIsGroup") != 0;
             item.clipOrder = q.getFloatField("clipOrder");
             item.stickyClipOrder = q.getFloatField("stickyClipOrder");
+
+            // Check for image data if text is empty or looks like a format name
+            if (item.text.isEmpty() || item.text.startsWith("CF_"))
+                loadImageData(item);
+
             m_items.append(item);
             q.nextRow();
         }
@@ -125,6 +158,10 @@ void ClipListModel::loadMore()
             item.isGroup = q.getIntField("bIsGroup") != 0;
             item.clipOrder = q.getFloatField("clipOrder");
             item.stickyClipOrder = q.getFloatField("stickyClipOrder");
+
+            if (item.text.isEmpty() || item.text.startsWith("CF_"))
+                loadImageData(item);
+
             newItems.append(item);
             q.nextRow();
         }

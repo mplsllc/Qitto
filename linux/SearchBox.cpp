@@ -26,5 +26,9 @@ void SearchBox::keyPressEvent(QKeyEvent *event)
         emit arrowDownPressed();
         return;
     }
+    if (event->key() == Qt::Key_Up) {
+        emit arrowUpPressed();
+        return;
+    }
     QLineEdit::keyPressEvent(event);
 }
