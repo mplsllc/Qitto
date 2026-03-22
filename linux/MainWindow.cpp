@@ -86,9 +86,9 @@ void MainWindow::setupUi()
     m_listView->setFrameShape(QFrame::NoFrame);
     leftLayout->addWidget(m_listView, 1);
 
+    // Single click pastes (like Ditto)
+    connect(m_listView, &QListView::clicked, this, &MainWindow::onItemActivated);
     connect(m_listView, &QListView::activated, this, &MainWindow::onItemActivated);
-    // Double-click also activates
-    connect(m_listView, &QListView::doubleClicked, this, &MainWindow::onItemActivated);
 
     connect(m_listView->verticalScrollBar(), &QScrollBar::valueChanged, [this](int value) {
         QScrollBar *sb = m_listView->verticalScrollBar();
