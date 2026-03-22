@@ -16,10 +16,11 @@ public slots:
 private:
     ClipboardMonitor *m_monitor;
     QString m_sessionType;
+    QString m_pasteTool;  // "xdotool", "wtype", "ydotool", or "none"
 
     QString getActiveWindowId();
     void activateWindow(const QString &windowId);
-    void simulatePaste();
-    void simulatePasteX11();
-    void simulatePasteWayland();
+    void simulatePasteXdotool();
+    void simulatePasteWtype(const QString &text);
+    void simulatePasteYdotool();
 };
