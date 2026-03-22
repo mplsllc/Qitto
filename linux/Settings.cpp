@@ -24,7 +24,7 @@ int Settings::autoDeleteDays() const { return m_settings.value("database/autoDel
 bool Settings::allowDuplicates() const { return m_settings.value("clipboard/allowDuplicates", false).toBool(); }
 bool Settings::allowBackToBackDuplicates() const { return m_settings.value("clipboard/allowBackToBackDuplicates", false).toBool(); }
 
-QString Settings::showPopupHotkey() const { return m_settings.value("hotkeys/showPopup", "Ctrl+`").toString(); }
+QString Settings::showPopupHotkey() const { return m_settings.value("hotkeys/showPopup", "Meta+V").toString(); }
 void Settings::setShowPopupHotkey(const QString &hotkey) { m_settings.setValue("hotkeys/showPopup", hotkey); }
 
 int Settings::pasteDelayMs() const { return m_settings.value("paste/delayMs", 50).toInt(); }

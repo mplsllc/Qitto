@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QLineEdit>
+#include <QKeySequenceEdit>
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QDoubleSpinBox>
@@ -23,7 +24,7 @@ private:
     QCheckBox *m_allowDuplicates;
     QSpinBox *m_maxEntries;
     QSpinBox *m_autoDeleteDays;
-    QLineEdit *m_showPopupHotkey;
+    QKeySequenceEdit *m_showPopupHotkey;
     QSpinBox *m_linesPerRow;
     QDoubleSpinBox *m_transparency;
     QSpinBox *m_pasteDelay;

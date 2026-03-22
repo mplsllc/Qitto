@@ -51,10 +51,10 @@ void SettingsDialog::setupUi()
     // Hotkeys
     QWidget *hotkeyTab = new QWidget;
     QFormLayout *hotkeyLayout = new QFormLayout(hotkeyTab);
-    m_showPopupHotkey = new QLineEdit;
-    m_showPopupHotkey->setPlaceholderText("e.g. Ctrl+`");
+    m_showPopupHotkey = new QKeySequenceEdit;
     hotkeyLayout->addRow("Show popup:", m_showPopupHotkey);
-    hotkeyLayout->addRow(new QLabel("Restart Qitto for hotkey changes to take effect."));
+    hotkeyLayout->addRow(new QLabel("Click the field above, then press your desired shortcut.\n"
+                                     "Restart Qitto for hotkey changes to take effect."));
     tabs->addTab(hotkeyTab, "Hotkeys");
 
     // Display
@@ -90,7 +90,7 @@ void SettingsDialog::loadSettings()
     m_maxEntries->setValue(s.maxEntries());
     m_autoDeleteDays->setValue(s.autoDeleteDays());
     m_allowDuplicates->setChecked(s.allowDuplicates());
-    m_showPopupHotkey->setText(s.showPopupHotkey());
+    m_showPopupHotkey->setKeySequence(QKeySequence(s.showPopupHotkey()));
     m_linesPerRow->setValue(s.linesPerRow());
     m_transparency->setValue(s.transparency());
     m_pasteDelay->setValue(s.pasteDelayMs());
@@ -104,7 +104,7 @@ void SettingsDialog::accept()
 {
     Settings &s = Settings::instance();
     s.setPasteDelayMs(m_pasteDelay->value());
-    s.setShowPopupHotkey(m_showPopupHotkey->text());
+    s.setShowPopupHotkey(m_showPopupHotkey->keySequence().toString());
 
     QSettings qs(QSettings::IniFormat, QSettings::UserScope, "qitto", "qitto");
     qs.setValue("database/maxEntries", m_maxEntries->value());
