@@ -25,6 +25,22 @@ void ClipDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
     QRect textRect = option.rect.adjusted(8, 4, -8, -4);
     QString text = index.data(Qt::DisplayRole).toString();
     QString dateStr = index.data(ClipListModel::DateRole).toString();
+    int row = index.row();
+
+    // Number shortcut label (1-9) on the left
+    int numWidth = 0;
+    if (row < 9) {
+        QFont boldFont = option.font;
+        boldFont.setBold(true);
+        QFontMetrics boldFm(boldFont);
+        QString numLabel = QString::number(row + 1);
+        numWidth = boldFm.horizontalAdvance(numLabel) + 12;
+
+        painter->setFont(boldFont);
+        painter->setPen(option.palette.color(QPalette::Disabled, QPalette::Text));
+        painter->drawText(textRect.adjusted(0, 0, 0, 0),
+                          Qt::AlignTop | Qt::AlignLeft, numLabel);
+    }
 
     // Date on right, small
     QFont smallFont = option.font;
@@ -37,8 +53,8 @@ void ClipDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
     painter->drawText(textRect.adjusted(textRect.width() - dateWidth, 0, 0, 0),
                       Qt::AlignTop | Qt::AlignRight, dateStr);
 
-    // Main text
-    QRect mainRect = textRect.adjusted(0, 0, -dateWidth, 0);
+    // Main text (offset by number label width)
+    QRect mainRect = textRect.adjusted(numWidth, 0, -dateWidth, 0);
     painter->setFont(option.font);
 
     if (option.state & QStyle::State_Selected)

@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 # Define LINUX_PORT for all targets
 add_compile_definitions(LINUX_PORT)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Sql)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Sql DBus)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XCB REQUIRED xcb xcb-keysyms)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
@@ -62,6 +62,7 @@ target_include_directories(qitto PRIVATE
 target_link_libraries(qitto PRIVATE
     Qt6::Widgets
     Qt6::Sql
+    Qt6::DBus
     ${SQLITE3_LIBRARIES}
     ${XCB_LIBRARIES}
 )

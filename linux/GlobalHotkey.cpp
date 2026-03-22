@@ -4,12 +4,15 @@
 #include <QApplication>
 #include <QProcessEnvironment>
 #include <QGuiApplication>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusReply>
+#include <QAction>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
 
-// Get xcb connection via Qt6 QNativeInterface
 static xcb_connection_t *getXcbConnection()
 {
     auto *x11app = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
@@ -23,6 +26,11 @@ GlobalHotkey::GlobalHotkey(QObject *parent)
     m_sessionType = QProcessEnvironment::systemEnvironment().value("XDG_SESSION_TYPE", "x11");
     QittoApp::dbg("Session type: " + m_sessionType);
     QApplication::instance()->installNativeEventFilter(this);
+
+    // Register D-Bus object so KGlobalAccel can call our Toggle slot
+    QDBusConnection::sessionBus().registerObject(
+        "/qitto", this, QDBusConnection::ExportScriptableSlots);
+    QDBusConnection::sessionBus().registerService("com.qitto.app");
 }
 
 GlobalHotkey::~GlobalHotkey()
@@ -36,26 +44,141 @@ bool GlobalHotkey::registerHotkey(const QKeySequence &keySequence)
     if (keySequence.isEmpty()) return false;
     unregisterHotkey();
 
-    QKeyCombination combo = keySequence[0];
-    int key = combo.key();
-    Qt::KeyboardModifiers mods = combo.keyboardModifiers();
+    // Try KGlobalAccel first (works on KDE X11 + Wayland)
+    if (registerKGlobalAccel(keySequence))
+        return true;
 
+    // Fall back to xcb_grab_key (X11 only)
     if (m_sessionType == "x11" || m_sessionType == "tty") {
-        return registerX11(key, mods);
-    } else {
-        QittoApp::dbg("WARNING: Global hotkeys on Wayland not yet supported via xcb. "
-                       "Use D-Bus GlobalShortcuts portal in future.");
-        return false;
+        QKeyCombination combo = keySequence[0];
+        return registerX11(combo.key(), combo.keyboardModifiers());
     }
+
+    QittoApp::dbg("WARNING: No hotkey method available for this session type");
+    return false;
 }
 
 void GlobalHotkey::unregisterHotkey()
 {
     if (!m_registered) return;
-    if (m_sessionType == "x11" || m_sessionType == "tty")
+    if (!m_usingKGlobalAccel && (m_sessionType == "x11" || m_sessionType == "tty"))
         unregisterX11();
     m_registered = false;
+    m_usingKGlobalAccel = false;
 }
+
+// ============================================================================
+// KGlobalAccel — works on KDE Plasma (X11 + Wayland)
+// ============================================================================
+
+bool GlobalHotkey::registerKGlobalAccel(const QKeySequence &keySequence)
+{
+    QDBusConnection bus = QDBusConnection::sessionBus();
+
+    // Check if kglobalaccel is available
+    QDBusMessage ping = QDBusMessage::createMethodCall(
+        "org.kde.kglobalaccel", "/kglobalaccel",
+        "org.freedesktop.DBus.Peer", "Ping");
+    QDBusReply<void> pingReply = bus.call(ping, QDBus::Block, 500);
+    if (!pingReply.isValid()) {
+        QittoApp::dbg("KGlobalAccel not available, will try xcb fallback");
+        return false;
+    }
+
+    // Register the shortcut with KGlobalAccel via the component/shortcut D-Bus API
+    // Component ID: "qitto", Friendly name: "Qitto Clipboard Manager"
+    // Shortcut ID: "toggle_popup", Friendly name: "Show/Hide Qitto"
+
+    // Step 1: Register component
+    // setShortcut(componentUnique, componentFriendly, shortcutUnique, shortcutFriendly, defaultKeys, activeKeys)
+    // This uses the org.kde.KGlobalAccel interface
+
+    // The KGlobalAccel D-Bus API expects:
+    // doRegister(QStringList{componentUnique, componentFriendly, shortcutUnique, shortcutFriendly})
+    // setShortcut(QStringList{...}, QList<int>{keySequence}, SetFlag)
+
+    QStringList actionId;
+    actionId << "qitto"                    // component unique name
+             << "Qitto Clipboard Manager"  // component friendly name
+             << "toggle_popup"             // shortcut unique name
+             << "Show/Hide Qitto";         // shortcut friendly name
+
+    // Convert key sequence to int list for KGlobalAccel
+    QList<int> keys;
+    keys << keySequence[0].toCombined();
+
+    QList<int> defaultKeys = keys;
+
+    // Call setShortcut
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        "org.kde.kglobalaccel",
+        "/kglobalaccel",
+        "org.kde.KGlobalAccel",
+        "setShortcutKeys"
+    );
+    msg << QVariant::fromValue(actionId)
+        << QVariant::fromValue(keys)
+        << uint(0x02);  // SetPresent flag = autoloading
+
+    QDBusReply<QList<int>> reply = bus.call(msg, QDBus::Block, 2000);
+
+    if (!reply.isValid()) {
+        // Try the older API: setShortcut with different signature
+        QittoApp::dbg("KGlobalAccel setShortcutKeys failed: " + reply.error().message());
+        QittoApp::dbg("Trying alternative registration...");
+
+        // Alternative: use setForeignShortcut
+        msg = QDBusMessage::createMethodCall(
+            "org.kde.kglobalaccel",
+            "/kglobalaccel",
+            "org.kde.KGlobalAccel",
+            "setForeignShortcutKeys"
+        );
+        msg << QVariant::fromValue(actionId)
+            << QVariant::fromValue(keys);
+
+        QDBusReply<void> reply2 = bus.call(msg, QDBus::Block, 2000);
+        if (!reply2.isValid()) {
+            QittoApp::dbg("KGlobalAccel registration failed: " + reply2.error().message());
+            return false;
+        }
+    }
+
+    // Connect to the KGlobalAccel notification signal
+    bus.connect(
+        "org.kde.kglobalaccel",
+        "/kglobalaccel",
+        "org.kde.KGlobalAccel",
+        "yourShortcutGotChanged",
+        this,
+        SLOT(Toggle())
+    );
+
+    // Also listen for the invokeShortcut signal
+    bus.connect(
+        "org.kde.kglobalaccel",
+        "/kglobalaccel",
+        "org.kde.KGlobalAccel",
+        "invokedShortcut",
+        this,
+        SLOT(Toggle())
+    );
+
+    m_registered = true;
+    m_usingKGlobalAccel = true;
+    QittoApp::dbg("KGlobalAccel: registered shortcut " + keySequence.toString());
+    return true;
+}
+
+void GlobalHotkey::Toggle()
+{
+    QittoApp::dbg("Toggle() called via D-Bus/KGlobalAccel");
+    emit activated();
+}
+
+// ============================================================================
+// X11 fallback — xcb_grab_key
+// ============================================================================
 
 bool GlobalHotkey::registerX11(int qtKey, Qt::KeyboardModifiers qtMods)
 {
@@ -119,7 +242,7 @@ bool GlobalHotkey::registerX11(int qtKey, Qt::KeyboardModifiers qtMods)
     xcb_flush(conn);
     m_registered = true;
 
-    QittoApp::dbg("Global hotkey registered: keycode=" + QString::number(m_nativeKeycode)
+    QittoApp::dbg("X11 hotkey registered: keycode=" + QString::number(m_nativeKeycode)
                    + " mods=0x" + QString::number(m_nativeModifiers, 16));
     return true;
 }
@@ -143,7 +266,7 @@ void GlobalHotkey::unregisterX11()
         xcb_ungrab_key(conn, m_nativeKeycode, root, mod);
 
     xcb_flush(conn);
-    QittoApp::dbg("Global hotkey unregistered");
+    QittoApp::dbg("X11 hotkey unregistered");
 }
 
 uint GlobalHotkey::qtModsToX11(Qt::KeyboardModifiers mods) const
@@ -158,7 +281,7 @@ uint GlobalHotkey::qtModsToX11(Qt::KeyboardModifiers mods) const
 
 bool GlobalHotkey::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *)
 {
-    if (!m_registered) return false;
+    if (!m_registered || m_usingKGlobalAccel) return false;
     if (eventType != "xcb_generic_event_t") return false;
 
     auto *event = static_cast<xcb_generic_event_t *>(message);
@@ -167,7 +290,7 @@ bool GlobalHotkey::nativeEventFilter(const QByteArray &eventType, void *message,
         uint cleanMods = keyEvent->state & ~(XCB_MOD_MASK_LOCK | XCB_MOD_MASK_2);
 
         if (keyEvent->detail == m_nativeKeycode && cleanMods == m_nativeModifiers) {
-            QittoApp::dbg("Global hotkey activated");
+            QittoApp::dbg("X11 hotkey activated");
             emit activated();
             return true;
         }

@@ -158,6 +158,17 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         return;
     }
 
+    // Number shortcuts: 1-9 paste the Nth clip (only when search box is empty)
+    if (m_searchBox->text().isEmpty() && event->key() >= Qt::Key_1 && event->key() <= Qt::Key_9) {
+        int row = event->key() - Qt::Key_1;  // 0-indexed
+        if (row < m_model->rowCount()) {
+            QModelIndex idx = m_model->index(row);
+            onItemActivated(idx);
+            return;
+        }
+    }
+
+    // Forward typing to search box if list has focus
     if (m_listView->hasFocus() && !event->text().isEmpty()
         && event->key() != Qt::Key_Up && event->key() != Qt::Key_Down) {
         m_searchBox->setFocus();
